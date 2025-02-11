@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import connectDB from "@/lib/db"
 import Url from "@/models/Url"
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -19,7 +19,7 @@ export async function GET(
 
     return NextResponse.json(url)
   } catch (error) {
-    console.error("URL alınırken hata oluştu:", error)
+    console.error("URL alınırken hata:", error)
     return NextResponse.json(
       { error: "URL alınırken bir hata oluştu" },
       { status: 500 }
