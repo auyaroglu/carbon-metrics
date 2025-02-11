@@ -1,101 +1,302 @@
-import Image from "next/image";
+"use client"
+
+import { useState, useEffect } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { format } from "date-fns"
+import { tr } from "date-fns/locale"
+import { toast } from "sonner"
+import { Navbar } from "@/components/navbar"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+
+interface Url {
+  _id: string
+  url: string
+  lastScanned: string
+  createdAt: string
+}
+
+interface UrlMetric {
+  _id: string
+  url: string
+  lastScanned: string
+  cls: number
+  lcp: number
+  inp: number
+}
+
+interface DegradedMetric {
+  _id: string
+  url: string
+  lastScanned: string
+  cls: number
+  previousCls: number
+  clsDifference: number
+  lcp: number
+  previousLcp: number
+  lcpDifference: number
+  inp: number
+}
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [currentPage, setCurrentPage] = useState(1)
+  const [worstUrls, setWorstUrls] = useState<UrlMetric[]>([])
+  const [degradedUrls, setDegradedUrls] = useState<DegradedMetric[]>([])
+  const [metricFilter, setMetricFilter] = useState<'both' | 'cls' | 'lcp'>('both')
+  const [sortBy, setSortBy] = useState<'timestamp' | 'cls' | 'lcp'>('timestamp')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const fetchUrls = async () => {
+    try {
+      const response = await fetch(`/api/urls?page=${currentPage}`)
+      const data = await response.json()
+    } catch (error) {
+      toast.error("URL'ler yüklenirken bir hata oluştu")
+    }
+  }
+
+  useEffect(() => {
+    fetchUrls()
+  }, [currentPage])
+
+  useEffect(() => {
+    const fetchWorstUrls = async () => {
+      try {
+        const response = await fetch("/api/metrics/worst")
+        const data = await response.json()
+        setWorstUrls(data)
+      } catch (error) {
+        console.error("En kötü skorlu URL'ler yüklenirken hata oluştu:", error)
+      }
+    }
+
+    fetchWorstUrls()
+  }, [])
+
+  const fetchDegradedUrls = async () => {
+    try {
+      const response = await fetch(
+        `/api/metrics/degraded?metric=${metricFilter}&sortBy=${sortBy}&order=${sortOrder}`
+      )
+      const data = await response.json()
+      setDegradedUrls(data)
+    } catch (error) {
+      console.error("Kötüleşen metrikler yüklenirken hata oluştu:", error)
+    }
+  }
+
+  useEffect(() => {
+    fetchDegradedUrls()
+  }, [metricFilter, sortBy, sortOrder])
+
+
+  const handleSort = (column: 'timestamp' | 'cls' | 'lcp') => {
+    if (sortBy === column) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(column)
+      setSortOrder('desc')
+    }
+  }
+
+  return (
+    <div className="bg-background min-h-screen">
+      <Navbar />
+      <main className="container mx-auto px-4 py-8">
+        <div className="flex flex-col gap-8">
+          <section className="space-y-4">
+            <h1 className="text-4xl font-bold tracking-tight">Web Performans Analizi</h1>
+            <p className="text-muted-foreground text-lg">
+              Web sitelerinizin performans metriklerini analiz edin ve zaman içindeki değişimlerini takip edin.
+            </p>
+          </section>
+          
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            <Link href="/urls" className="block">
+              <div className="p-6 rounded-lg border transition-colors hover:border-primary">
+                <h2 className="mb-2 text-2xl font-semibold">URL'ler</h2>
+                <p className="text-muted-foreground">
+                  URL'leri listeleyin, tarayın ve yönetin.
+                </p>
+              </div>
+            </Link>
+
+            <Link href="/add-url" className="block">
+              <div className="p-6 rounded-lg border transition-colors hover:border-primary">
+                <h2 className="mb-2 text-2xl font-semibold">URL Ekle</h2>
+                <p className="text-muted-foreground">
+                  Yeni bir web sitesi ekleyin ve performans metriklerini analiz edin.
+                </p>
+              </div>
+            </Link>
+            
+            <Link href="/metrics" className="block">
+              <div className="p-6 rounded-lg border transition-colors hover:border-primary">
+                <h2 className="mb-2 text-2xl font-semibold">Metrikleri Görüntüle</h2>
+                <p className="text-muted-foreground">
+                  Mevcut web sitelerinin performans metriklerini inceleyin.
+                </p>
+              </div>
+            </Link>
+          </div>
+
+          {worstUrls.length > 0 && (
+            <div className="space-y-4">
+              <h2 className="text-2xl font-semibold">En Kötü Performans Gösteren URL'ler</h2>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>URL</TableHead>
+                      <TableHead>CLS</TableHead>
+                      <TableHead>LCP</TableHead>
+                      <TableHead>INP</TableHead>
+                      <TableHead>Son Tarama</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {worstUrls.map((url) => (
+                      <TableRow key={url._id}>
+                        <TableCell>
+                          <Link 
+                            href={`/metrics?urlId=${url._id}`}
+                            className="text-primary hover:underline"
+                          >
+                            {url.url}
+                          </Link>
+                        </TableCell>
+                        <TableCell className={url.cls <= 0.1 ? "text-green-600" : url.cls <= 0.25 ? "text-yellow-600" : "text-red-600"}>
+                          {url.cls.toFixed(3)}
+                        </TableCell>
+                        <TableCell className={url.lcp <= 2500 ? "text-green-600" : url.lcp <= 4000 ? "text-yellow-600" : "text-red-600"}>
+                          {url.lcp.toFixed(0)}ms
+                        </TableCell>
+                        <TableCell className={url.inp <= 200 ? "text-green-600" : url.inp <= 500 ? "text-yellow-600" : "text-red-600"}>
+                          {url.inp.toFixed(0)}ms
+                        </TableCell>
+                        <TableCell>
+                          {format(new Date(url.lastScanned), "dd MMMM yyyy HH:mm", {
+                            locale: tr,
+                          })}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-semibold">Kötüleşen Metrikler</h2>
+              <div className="space-x-2">
+                <Button
+                  variant={metricFilter === 'both' ? 'default' : 'outline'}
+                  onClick={() => setMetricFilter('both')}
+                >
+                  Tümü
+                </Button>
+                <Button
+                  variant={metricFilter === 'cls' ? 'default' : 'outline'}
+                  onClick={() => setMetricFilter('cls')}
+                >
+                  CLS
+                </Button>
+                <Button
+                  variant={metricFilter === 'lcp' ? 'default' : 'outline'}
+                  onClick={() => setMetricFilter('lcp')}
+                >
+                  LCP
+                </Button>
+              </div>
+            </div>
+
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>URL</TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('cls')}
+                    >
+                      CLS {sortBy === 'cls' && (sortOrder === 'asc' ? '↑' : '↓')}
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('lcp')}
+                    >
+                      LCP {sortBy === 'lcp' && (sortOrder === 'asc' ? '↑' : '↓')}
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('timestamp')}
+                    >
+                      Son Tarama {sortBy === 'timestamp' && (sortOrder === 'asc' ? '↑' : '↓')}
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {degradedUrls.map((url) => (
+                    <TableRow key={url._id}>
+                      <TableCell>
+                        <Link 
+                          href={`/metrics?urlId=${url._id}`}
+                          className="text-primary hover:underline"
+                        >
+                          {url.url}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className={url.clsDifference > 0 ? "text-red-600" : "text-green-600"}>
+                            {url.cls.toFixed(3)}
+                          </div>
+                          <div className="text-muted-foreground text-sm">
+                            Önceki: {url.previousCls.toFixed(3)}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className={url.lcpDifference > 0 ? "text-red-600" : "text-green-600"}>
+                            {url.lcp.toFixed(0)}ms
+                          </div>
+                          <div className="text-muted-foreground text-sm">
+                            Önceki: {url.previousLcp.toFixed(0)}ms
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {format(new Date(url.lastScanned), "dd MMMM yyyy HH:mm", {
+                          locale: tr,
+                        })}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {degradedUrls.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-4 text-center">
+                        Kötüleşen metrik bulunamadı
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
         </div>
       </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
-  );
+  )
 }
