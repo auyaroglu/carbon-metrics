@@ -1,14 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { format } from "date-fns"
 import { tr } from "date-fns/locale"
 import { toast } from "sonner"
 import { Navbar } from "@/components/navbar"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Table,
   TableBody,
@@ -17,13 +15,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-
-interface Url {
-  _id: string
-  url: string
-  lastScanned: string
-  createdAt: string
-}
 
 interface UrlMetric {
   _id: string
@@ -48,7 +39,6 @@ interface DegradedMetric {
 }
 
 export default function Home() {
-  const [currentPage, setCurrentPage] = useState(1)
   const [worstUrls, setWorstUrls] = useState<UrlMetric[]>([])
   const [degradedUrls, setDegradedUrls] = useState<DegradedMetric[]>([])
   const [metricFilter, setMetricFilter] = useState<'both' | 'cls' | 'lcp'>('both')
@@ -57,16 +47,16 @@ export default function Home() {
 
   const fetchUrls = async () => {
     try {
-      const response = await fetch(`/api/urls?page=${currentPage}`)
-      const data = await response.json()
+      await fetch(`/api/urls?page=1`)
     } catch (error) {
-      toast.error("URL'ler yüklenirken bir hata oluştu")
+      console.error("URL&apos;ler yüklenirken hata:", error)
+      toast.error("URL&apos;ler yüklenirken bir hata oluştu")
     }
   }
 
   useEffect(() => {
     fetchUrls()
-  }, [currentPage])
+  }, [])
 
   useEffect(() => {
     const fetchWorstUrls = async () => {
@@ -75,14 +65,14 @@ export default function Home() {
         const data = await response.json()
         setWorstUrls(data)
       } catch (error) {
-        console.error("En kötü skorlu URL'ler yüklenirken hata oluştu:", error)
+        console.error("En kötü skorlu URL&apos;ler yüklenirken hata:", error)
       }
     }
 
     fetchWorstUrls()
   }, [])
 
-  const fetchDegradedUrls = async () => {
+  const fetchDegradedUrls = useCallback(async () => {
     try {
       const response = await fetch(
         `/api/metrics/degraded?metric=${metricFilter}&sortBy=${sortBy}&order=${sortOrder}`
@@ -90,14 +80,13 @@ export default function Home() {
       const data = await response.json()
       setDegradedUrls(data)
     } catch (error) {
-      console.error("Kötüleşen metrikler yüklenirken hata oluştu:", error)
+      console.error("Kötüleşen metrikler yüklenirken hata:", error)
     }
-  }
+  }, [metricFilter, sortBy, sortOrder])
 
   useEffect(() => {
     fetchDegradedUrls()
-  }, [metricFilter, sortBy, sortOrder])
-
+  }, [fetchDegradedUrls])
 
   const handleSort = (column: 'timestamp' | 'cls' | 'lcp') => {
     if (sortBy === column) {
@@ -151,7 +140,7 @@ export default function Home() {
 
           {worstUrls.length > 0 && (
             <div className="space-y-4">
-              <h2 className="text-2xl font-semibold">En Kötü Performans Gösteren URL'ler</h2>
+              <h2 className="text-2xl font-semibold">En Kötü Performans Gösteren URL&apos;ler</h2>
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>

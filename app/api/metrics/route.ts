@@ -38,8 +38,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json(metrics);
   } catch (error) {
+    console.error('Metrikler alınırken hata:', error);
     return NextResponse.json(
-      { error: 'Metrikler alınırken bir hata oluştu.' },
+      { error: 'Metrikler alınırken bir hata oluştu' },
       { status: 500 }
     );
   }

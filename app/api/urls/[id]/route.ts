@@ -3,7 +3,7 @@ import connectDB from "@/lib/db"
 import Url from "@/models/Url"
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -28,7 +28,7 @@ export async function GET(
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {

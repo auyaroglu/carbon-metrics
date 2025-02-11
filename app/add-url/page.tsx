@@ -49,16 +49,21 @@ export default function AddUrlPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background min-h-screen">
       <Navbar />
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8">URL Ekle</h1>
+      <div className="container mx-auto py-10">
+        <div className="max-w-xl mx-auto space-y-6">
+          <div className="space-y-2 text-center">
+            <h1 className="text-3xl font-bold">Yeni URL Ekle</h1>
+            <p className="text-muted-foreground">
+              Takip etmek istediğiniz web sitesinin URL&apos;sini girin
+            </p>
+          </div>
           
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <label htmlFor="url" className="text-sm font-medium">
-                Web Sitesi URL'i
+                Web Sitesi URL&apos;i
               </label>
               <Input
                 id="url"
@@ -75,7 +80,7 @@ export default function AddUrlPage() {
             </Button>
           </form>
         </div>
-      </main>
+      </div>
     </div>
   )
 } 

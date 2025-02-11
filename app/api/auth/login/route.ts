@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     )
   } catch (error) {
     return NextResponse.json(
-      { error: "Bir hata oluştu" },
+      { error: "Giriş yapılırken bir hata oluştu" },
       { status: 500 }
     )
   }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { tr } from "date-fns/locale"
@@ -50,7 +50,7 @@ export default function UrlsPage() {
   const router = useRouter()
   const { isScanning, progress, startScanning, updateProgress, stopScanning, cancelScanning } = useScan()
 
-  const fetchUrls = async () => {
+  const fetchUrls = useCallback(async () => {
     try {
       const response = await fetch(
         `/api/urls?page=${currentPage}&sortBy=${sortBy}&sortOrder=${sortOrder}&search=${encodeURIComponent(searchTerm)}`
@@ -64,12 +64,11 @@ export default function UrlsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentPage, sortBy, sortOrder, searchTerm])
 
   useEffect(() => {
     fetchUrls()
-  }, [currentPage, sortBy, sortOrder, searchTerm])
-
+  }, [fetchUrls])
 
   const handleSelectUrl = (urlId: string) => {
     setSelectedUrls((prev) =>

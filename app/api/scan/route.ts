@@ -1,61 +1,13 @@
 import { NextResponse } from "next/server"
-import connectDB from "@/lib/db"
-import Url from "@/models/Url"
+import dbConnect from "@/lib/dbConnect"
 import Job from "@/models/Job"
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const API_KEY = process.env.PAGESPEED_API_KEY
-
-async function runPageSpeedTest(url: string) {
-  try {
-    console.log('Tarama başlatılıyor:', url)
-
-    // API URL'ini oluştur - mobil görünüm ve performans kategorisi için
-    const apiUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(url)}&strategy=mobile&category=performance&key=${API_KEY}`
-    console.log('API URL:', apiUrl)
-
-    const response = await fetch(apiUrl)
-    const data = await response.json()
-
-    if (!response.ok) {
-      console.error('API Hatası:', data)
-      throw new Error(data.error?.message || "PageSpeed API isteği başarısız oldu")
-    }
-
-    console.log('API Yanıtı:', JSON.stringify(data, null, 2))
-
-    if (!data.lighthouseResult) {
-      throw new Error("Lighthouse sonuçları alınamadı")
-    }
-
-    // Lighthouse sonuçlarından metrikleri al
-    const audits = data.lighthouseResult.audits
-    const metrics = {
-      // CLS (Cumulative Layout Shift)
-      cls: audits['cumulative-layout-shift']?.numericValue || 0,
-      
-      // LCP (Largest Contentful Paint)
-      lcp: audits['largest-contentful-paint']?.numericValue || 0,
-      
-      // INP (Interaction to Next Paint) - Eğer mevcut değilse TTI (Time to Interactive) kullan
-      inp: audits['interaction-to-next-paint']?.numericValue || audits['interactive']?.numericValue || 0,
-      
-      timestamp: new Date()
-    }
-
-    console.log('Hesaplanan metrikler:', metrics)
-    return metrics
-  } catch (error) {
-    console.error('PageSpeed testi çalıştırma hatası:', error)
-    throw error
-  }
-}
-
 export async function POST(request: Request) {
   try {
-    await connectDB()
+    await dbConnect()
 
     const body = await request.json()
     console.log('Gelen istek:', body)

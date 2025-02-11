@@ -3,12 +3,6 @@ import connectDB from '@/lib/db';
 import Url from '@/models/Url';
 import Metric from '@/models/Metric';
 
-const ITEMS_PER_PAGE = 10;
-
-interface MetricType {
-  timestamp: Date;
-}
-
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -47,8 +41,8 @@ export async function GET(request: Request) {
       currentPage: page,
       totalDocs,
     });
-  } catch (error) {
-    console.error("URL'ler alınırken hata:", error);
+  } catch (err) {
+    console.error("URL'ler alınırken hata:", err);
     return NextResponse.json(
       { error: "URL'ler alınırken bir hata oluştu" },
       { status: 500 }

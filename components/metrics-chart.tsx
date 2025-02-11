@@ -13,6 +13,15 @@ interface MetricsChartProps {
   getMetricStatus: (value: number, type: "cls" | "lcp" | "inp") => "good" | "needs-improvement" | "poor" | "unknown";
 }
 
+interface CustomizedDotProps {
+  cx: number;
+  cy: number;
+  payload: {
+    [key: string]: number | string;
+  };
+  dataKey: string;
+}
+
 export function MetricsChart({ data, selectedMetric, getMetricStatus }: MetricsChartProps) {
   const formattedData = data.map(item => ({
     ...item,
@@ -33,14 +42,14 @@ export function MetricsChart({ data, selectedMetric, getMetricStatus }: MetricsC
     }
   };
 
-  const CustomizedDot = (props: any) => {
-    const { cx, cy, value } = props;
+  const CustomizedDot = ({ cx, cy, payload, dataKey }: CustomizedDotProps) => {
+    const value = payload[dataKey];
     return (
       <circle
         cx={cx}
         cy={cy}
         r={4}
-        fill={getStrokeColor(value)}
+        fill={getStrokeColor(value as number)}
         stroke="white"
         strokeWidth={2}
       />
@@ -53,7 +62,7 @@ export function MetricsChart({ data, selectedMetric, getMetricStatus }: MetricsC
         type="monotone"
         dataKey={selectedMetric}
         stroke="#6b7280"
-        dot={<CustomizedDot />}
+        dot={(props) => <CustomizedDot {...props} dataKey={selectedMetric} />}
         name={selectedMetric.toUpperCase()}
       />
     );

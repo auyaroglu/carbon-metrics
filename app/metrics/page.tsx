@@ -42,28 +42,8 @@ export default function MetricsPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
 
-  // Debounce işlemi için useEffect
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-
   // URL'leri yükle
-  useEffect(() => {
-    fetchUrls()
-  }, [])
-
-  useEffect(() => {
-    const urlId = searchParams.get('urlId')
-    if (urlId) {
-      setSelectedUrlId(urlId)
-    }
-  }, [searchParams])
-
-  const fetchUrls = async () => {
+  const fetchUrls = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch('/api/urls/all')
@@ -79,39 +59,60 @@ export default function MetricsPage() {
         }
       }
     } catch (error) {
-      console.error("URL'ler yüklenirken hata oluştu:", error)
+      console.error("URL&apos;ler yüklenirken hata oluştu:", error)
       toast({
         variant: "destructive",
         title: "Hata",
-        description: "URL'ler yüklenirken bir hata oluştu"
+        description: "URL&apos;ler yüklenirken bir hata oluştu"
       })
     } finally {
       setLoading(false)
     }
-  }
+  }, [searchParams])
 
   // Metrikleri yükle
-  const fetchMetrics = async () => {
+  const fetchMetrics = useCallback(async () => {
     if (!selectedUrlId) return
 
     try {
       const response = await fetch(`/api/metrics?urlId=${selectedUrlId}&period=${period}`)
       const data = await response.json()
       setMetrics(data)
-    } catch (error) {
+    } catch (_) {
       toast({
         variant: "destructive",
         title: "Hata",
         description: "Metrikler yüklenirken bir hata oluştu.",
       })
     }
-  }
+  }, [selectedUrlId, period])
+
+  // Debounce işlemi için useEffect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // URL'leri yükle
+  useEffect(() => {
+    fetchUrls()
+  }, [fetchUrls])
+
+  useEffect(() => {
+    const urlId = searchParams.get('urlId')
+    if (urlId) {
+      setSelectedUrlId(urlId)
+    }
+  }, [searchParams])
 
   useEffect(() => {
     if (selectedUrlId) {
       fetchMetrics()
     }
-  }, [selectedUrlId, period])
+  }, [selectedUrlId, period, fetchMetrics])
 
   // Metrik değerlerinin durumunu kontrol et
   const getMetricStatus = (value: number, type: "cls" | "lcp" | "inp") => {
