@@ -2,20 +2,14 @@ import { NextRequest, NextResponse } from "next/server"
 import connectDB from "@/lib/db"
 import Url from "@/models/Url"
 
-type Props = {
-  params: {
-    id: string
-  }
-}
-
 export async function GET(
   request: NextRequest,
-  context: Props
+  { params }: { params: { id: string } }
 ) {
   try {
     await connectDB()
 
-    const url = await Url.findById(context.params.id).lean()
+    const url = await Url.findById(params.id).lean()
     if (!url) {
       return NextResponse.json(
         { error: "URL bulunamadı" },
@@ -35,20 +29,18 @@ export async function GET(
 
 export async function DELETE(
   request: NextRequest,
-  context: Props
+  { params }: { params: { id: string } }
 ) {
   try {
     await connectDB()
 
-    const url = await Url.findByIdAndDelete(context.params.id)
+    const url = await Url.findByIdAndDelete(params.id)
     if (!url) {
       return NextResponse.json(
         { error: "URL bulunamadı" },
         { status: 404 }
       )
     }
-
-    // Burada ilgili metrikleri de silebilirsiniz
 
     return NextResponse.json({ message: "URL başarıyla silindi" })
   } catch (error) {
@@ -58,4 +50,4 @@ export async function DELETE(
       { status: 500 }
     )
   }
-} 
+}
