@@ -66,26 +66,40 @@ Projede iki adet otomatik çalışan job bulunmaktadır:
 
 ### Cron Yönetimi
 
-Cron'ları başlatmak için aşağıdaki URL'lerden birini ziyaret edin:
+Cron işlemlerini yönetmek için aşağıdaki API endpoint'lerini kullanabilirsiniz:
 
-1. Tarayıcıdan:
-```
-https://your-domain.com/api/cron/start?key=your_cron_secret_key
-```
-
-2. Terminal'den:
+1. Cron Durumunu Kontrol Etme:
 ```bash
-curl "https://your-domain.com/api/cron/start?key=your_cron_secret_key"
+curl "https://your-domain.com/api/cron/manage?key=your_cron_secret_key"
 ```
 
-3. Uptime monitoring servisleri ile:
-- UptimeRobot, Pingdom gibi servislere yukarıdaki URL'i ekleyerek düzenli kontrol sağlayabilirsiniz
-- Monitoring aralığını 5 dakika olarak ayarlayın
+2. Cron'u Başlatma:
+```bash
+curl -X POST "https://your-domain.com/api/cron/manage?key=your_cron_secret_key" \
+-H "Content-Type: application/json" \
+-d '{"action":"start"}'
+```
 
-Not: Cron'lar başlatıldıktan sonra:
-- Her Pazar gece yarısı tüm URL'ler için job oluşturulur
-- Her 5 dakikada bir bekleyen job'lar işlenir
-- Loglar console'da görüntülenir
+3. Cron'u Durdurma:
+```bash
+curl -X POST "https://your-domain.com/api/cron/manage?key=your_cron_secret_key" \
+-H "Content-Type: application/json" \
+-d '{"action":"stop"}'
+```
+
+4. Cron'u Yeniden Başlatma:
+```bash
+curl -X POST "https://your-domain.com/api/cron/manage?key=your_cron_secret_key" \
+-H "Content-Type: application/json" \
+-d '{"action":"restart"}'
+```
+
+Cron durumu yanıtı aşağıdaki bilgileri içerir:
+- `isRunning`: Cron'ların genel çalışma durumu
+- `weeklyJob`: Haftalık job durumu ve bir sonraki çalışma zamanı
+- `scanJob`: 5 dakikalık tarama job'unun durumu ve bir sonraki çalışma zamanı
+
+Not: Cron işlemlerini yönetmek için her zaman `CRON_SECRET_KEY` kullanılması gereklidir.
 
 ## Veritabanı Şeması
 

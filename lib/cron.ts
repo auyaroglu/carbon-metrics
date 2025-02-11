@@ -7,9 +7,11 @@ import Metric from '@/models/Metric';
 const PAGESPEED_API_KEY = process.env.PAGESPEED_API_KEY;
 const PAGESPEED_API_URL = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed";
 
-class CronManager {
+export class CronManager {
   private weeklyJob: CronJob;
   private scanJob: CronJob;
+  private static instance: CronManager;
+  private isRunning: boolean = false;
 
   constructor() {
     // Her Pazar günü gece yarısı çalışacak cron
@@ -17,6 +19,13 @@ class CronManager {
 
     // Her 5 dakikada bir çalışacak cron
     this.scanJob = new CronJob('*/5 * * * *', this.handleScanJob);
+  }
+
+  public static getInstance(): CronManager {
+    if (!CronManager.instance) {
+      CronManager.instance = new CronManager();
+    }
+    return CronManager.instance;
   }
 
   // Tüm URL'leri Jobs tablosuna ekler
@@ -121,17 +130,50 @@ class CronManager {
 
   // Cron'ları başlat
   public start() {
-    this.weeklyJob.start();
-    this.scanJob.start();
-    console.log('Cron jobs başlatıldı');
+    if (!this.isRunning) {
+      this.weeklyJob.start();
+      this.scanJob.start();
+      this.isRunning = true;
+      console.log('Cron jobs başlatıldı');
+    } else {
+      console.log('Cron jobs zaten çalışıyor');
+    }
   }
 
   // Cron'ları durdur
   public stop() {
-    this.weeklyJob.stop();
-    this.scanJob.stop();
-    console.log('Cron jobs durduruldu');
+    if (this.isRunning) {
+      this.weeklyJob.stop();
+      this.scanJob.stop();
+      this.isRunning = false;
+      console.log('Cron jobs durduruldu');
+    } else {
+      console.log('Cron jobs zaten durdurulmuş durumda');
+    }
+  }
+
+  // Cron'ları yeniden başlat
+  public restart() {
+    this.stop();
+    this.start();
+    console.log('Cron jobs yeniden başlatıldı');
+  }
+
+  // Cron durumunu kontrol et
+  public getStatus() {
+    return {
+      isRunning: this.isRunning,
+      weeklyJob: {
+        running: this.weeklyJob.running,
+        nextDate: this.weeklyJob.nextDate()?.toString()
+      },
+      scanJob: {
+        running: this.scanJob.running,
+        nextDate: this.scanJob.nextDate()?.toString()
+      }
+    };
   }
 }
 
-export const cronManager = new CronManager(); 
+// Singleton instance oluştur
+export const cronManager = CronManager.getInstance(); 

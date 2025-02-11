@@ -9,7 +9,7 @@ const PAGESPEED_API_URL = "https://www.googleapis.com/pagespeedonline/v5/runPage
 
 async function getPageSpeedMetrics(url: string) {
   try {
-    const apiUrl = `${PAGESPEED_API_URL}?url=${encodeURIComponent(url)}&key=${PAGESPEED_API_KEY}&strategy=mobile`;
+    const apiUrl = `${PAGESPEED_API_URL}?url=${encodeURIComponent(url)}&key=${PAGESPEED_API_KEY}&strategy=mobile&category=PERFORMANCE`;
     const response = await fetch(apiUrl);
     const data = await response.json();
 
