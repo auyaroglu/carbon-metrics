@@ -2,14 +2,20 @@ import { NextRequest, NextResponse } from "next/server"
 import connectDB from "@/lib/db"
 import Url from "@/models/Url"
 
+type Props = {
+  params: {
+    id: string
+  }
+}
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: Props
 ) {
   try {
     await connectDB()
 
-    const url = await Url.findById(params.id).lean()
+    const url = await Url.findById(context.params.id).lean()
     if (!url) {
       return NextResponse.json(
         { error: "URL bulunamadı" },
@@ -28,13 +34,13 @@ export async function GET(
 }
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  context: Props
 ) {
   try {
     await connectDB()
 
-    const url = await Url.findByIdAndDelete(params.id)
+    const url = await Url.findByIdAndDelete(context.params.id)
     if (!url) {
       return NextResponse.json(
         { error: "URL bulunamadı" },
@@ -46,7 +52,7 @@ export async function DELETE(
 
     return NextResponse.json({ message: "URL başarıyla silindi" })
   } catch (error) {
-    console.error("URL silinirken hata oluştu:", error)
+    console.error("URL silinirken hata:", error)
     return NextResponse.json(
       { error: "URL silinirken bir hata oluştu" },
       { status: 500 }
