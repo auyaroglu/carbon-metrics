@@ -4,12 +4,12 @@ import Url from "@/models/Url"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     await connectDB()
 
-    const url = await Url.findById(params.id).lean()
+    const url = await Url.findById(context.params.id).lean()
     if (!url) {
       return NextResponse.json(
         { error: "URL bulunamadı" },
@@ -29,12 +29,12 @@ export async function GET(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     await connectDB()
 
-    const url = await Url.findByIdAndDelete(params.id)
+    const url = await Url.findByIdAndDelete(context.params.id)
     if (!url) {
       return NextResponse.json(
         { error: "URL bulunamadı" },
