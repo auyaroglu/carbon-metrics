@@ -62,7 +62,10 @@ export function MetricsChart({ data, selectedMetric, getMetricStatus }: MetricsC
         type="monotone"
         dataKey={selectedMetric}
         stroke="#6b7280"
-        dot={(props) => <CustomizedDot {...props} dataKey={selectedMetric} />}
+        dot={(props) => {
+          const { key, ...rest } = props;
+          return <CustomizedDot key={key} {...rest} dataKey={selectedMetric} />;
+        }}
         name={selectedMetric.toUpperCase()}
       />
     );

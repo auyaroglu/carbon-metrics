@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
   },
   "dependencies": {
     "@hookform/resolvers": "^4.0.0",
@@ -25,6 +26,7 @@
     "cron": "^3.1.6",
     "date-fns": "^4.1.0",
     "lighthouse": "^12.3.0",
+    "lru-cache": "^11.0.2",
     "lucide-react": "^0.475.0",
     "mongoose": "^8.10.0",
     "next": "15.1.7",
@@ -46,6 +48,7 @@
     "eslint": "9.20.1",
     "eslint-config-next": "15.1.7",
     "postcss": "^8",
+    "prettier": "^3.5.0",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
   }

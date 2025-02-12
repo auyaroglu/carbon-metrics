@@ -3,6 +3,7 @@ import connectDB from "@/lib/db"
 import Url from "@/models/Url"
 import Metric from "@/models/Metric"
 import Job from "@/models/Job"
+import dbConnect from "@/lib/dbConnect"
 
 const API_KEY = process.env.PAGESPEED_API_KEY
 const DELAY_BETWEEN_REQUESTS = 2000 // 2 saniye bekle
@@ -47,155 +48,85 @@ async function runPageSpeedTest(url: string) {
   }
 }
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const action = searchParams.get('action');
+  const encoder = new TextEncoder();
+  const stream = new TransformStream();
+  const writer = stream.writable.getWriter();
 
-  if (action === 'cancel') {
-    global.isScanningCancelled = true;
-    // Tüm işleyen jobları iptal et
-    await Job.updateMany(
-      { status: 'processing' },
-      { status: 'failed', error: 'Kullanıcı tarafından iptal edildi' }
-    );
-    return NextResponse.json({ message: "Tarama işlemi iptal edildi" });
-  }
+  const writeMessage = async (message: any) => {
+    await writer.write(encoder.encode(`data: ${JSON.stringify(message)}\n\n`));
+  };
 
-  try {
-    await connectDB()
-    
-    // Önce tüm URL'leri al
-    const urls = await Url.find().lean()
-    const totalUrls = urls.length
-    console.log(`${totalUrls} adet URL bulundu`)
+  const processUrls = async () => {
+    try {
+      await dbConnect();
 
-    // Aktif job'ları temizle
-    await Job.deleteMany({ 
-      status: { $in: ['pending', 'processing'] }
-    });
+      // Tüm URL'leri al
+      const urls = await Url.find({}).select('_id url').lean();
+      
+      if (!urls || urls.length === 0) {
+        await writeMessage({ type: 'error', error: 'Hiç URL bulunamadı' });
+        return;
+      }
 
-    // Her URL için bir job oluştur
-    const jobs = await Promise.all(
-      urls.map(url => Job.create({ urlId: url._id }))
-    )
-    console.log(`${jobs.length} adet job oluşturuldu`)
+      // Mevcut jobs'ları temizle
+      await Job.deleteMany({
+        status: { $in: ['pending', 'processing'] }
+      });
 
-    const stream = new TransformStream();
-    const writer = stream.writable.getWriter();
-    const encoder = new TextEncoder();
+      // Her URL için sıralı job oluştur
+      for (let i = 0; i < urls.length; i++) {
+        const url = urls[i];
+        await Job.create({
+          urlId: url._id,
+          status: 'pending',
+          order: i + 1
+        });
 
-    // İlk mesajı gönder
-    const initialMessage = { type: 'start', total: urls.length };
-    await writer.write(encoder.encode(`data: ${JSON.stringify(initialMessage)}\n\n`));
-
-    // URL'leri sırayla tara
-    let scannedCount = 0;
-    for (let i = 0; i < urls.length; i++) {
-      const url = urls[i];
-      const job = jobs[i];
-
-      // İptal kontrolü
-      if (global.isScanningCancelled) {
-        const cancelMessage = { type: 'cancelled', scanned: scannedCount, total: urls.length };
-        await writer.write(encoder.encode(`data: ${JSON.stringify(cancelMessage)}\n\n`));
-        await writer.close();
-        return new Response(stream.readable, {
-          headers: {
-            'Content-Type': 'text/event-stream',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
-          },
+        await writeMessage({
+          type: 'progress',
+          scanned: i,
+          total: urls.length,
+          currentUrl: url.url
         });
       }
 
-      try {
-        // Job'ı işleme alındı olarak işaretle
-        job.status = 'processing';
-        job.startedAt = new Date();
-        await job.save();
-        
-        console.log(`${url.url} taranıyor...`)
-        
-        // PageSpeed API ile tarama yap
-        const metrics = await runPageSpeedTest(url.url)
+      // İlk taramayı tetikle
+      const cronResponse = await fetch(
+        `${request.headers.get('origin')}/api/cron/scan?key=${process.env.CRON_SECRET_KEY}`,
+        { method: 'GET' }
+      );
 
-        // Metrikleri kaydet
-        const savedMetric = await Metric.create({
-          urlId: url._id,
-          cls: metrics.cls,
-          lcp: metrics.lcp,
-          inp: metrics.inp,
-          timestamp: metrics.timestamp
-        })
-
-        console.log('Metrikler kaydedildi:', savedMetric)
-
-        // URL'nin son tarama tarihini güncelle
-        await Url.findByIdAndUpdate(
-          url._id,
-          { lastScanned: metrics.timestamp },
-          { new: true }
-        )
-
-        // Job'ı tamamlandı olarak işaretle
-        job.status = 'completed';
-        job.completedAt = new Date();
-        await job.save();
-
-        scannedCount++;
-
-        // İlerleme durumunu gönder
-        const progressMessage = { 
-          type: 'progress', 
-          scanned: scannedCount, 
-          total: urls.length,
-          currentUrl: url.url,
-          remainingJobs: urls.length - scannedCount
-        };
-        await writer.write(encoder.encode(`data: ${JSON.stringify(progressMessage)}\n\n`));
-
-        // API limitlerini aşmamak için bekle
-        await sleep(DELAY_BETWEEN_REQUESTS)
-      } catch (error) {
-        console.error(`${url.url} taranırken hata:`, error)
-        
-        // Job'ı hatalı olarak işaretle
-        job.status = 'failed';
-        job.error = error instanceof Error ? error.message : "Tarama hatası";
-        await job.save();
-
-        // Hata durumunu gönder
-        const errorMessage = { 
-          type: 'error', 
-          url: url.url, 
-          error: error instanceof Error ? error.message : "Tarama hatası"
-        };
-        await writer.write(encoder.encode(`data: ${JSON.stringify(errorMessage)}\n\n`));
+      if (!cronResponse.ok) {
+        throw new Error('Cron tetikleme başarısız oldu');
       }
+
+      await writeMessage({
+        type: 'complete',
+        message: 'Tarama işlemi başlatıldı'
+      });
+
+    } catch (error) {
+      console.error('Toplu tarama hatası:', error);
+      await writeMessage({
+        type: 'error',
+        error: error instanceof Error ? error.message : 'Bilinmeyen bir hata oluştu'
+      });
+    } finally {
+      writer.close();
     }
+  };
 
-    // Tamamlanma mesajını gönder
-    const completeMessage = { 
-      type: 'complete', 
-      scanned: scannedCount, 
-      total: urls.length,
-      remainingJobs: 0
-    };
-    await writer.write(encoder.encode(`data: ${JSON.stringify(completeMessage)}\n\n`));
-    await writer.close();
+  processUrls();
 
-    return new Response(stream.readable, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-      },
-    });
-  } catch (error) {
-    console.error("Toplu tarama sırasında hata:", error)
-    return NextResponse.json(
-      { error: "Toplu tarama sırasında bir hata oluştu" },
-      { status: 500 }
-    )
-  }
+  return new NextResponse(stream.readable, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive'
+    }
+  });
 } 
